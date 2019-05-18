@@ -1,5 +1,5 @@
-#ifndef DIVISIBLEOFFSETSPOINTSTOSET_H
-#define DIVISIBLEOFFSETSPOINTSTOSET_H
+#ifndef ALIGNEDOFFSETSPOINTSTOSET_H
+#define ALIGNEDFFSETSPOINTSTOSET_H
 
 #include "dg/analysis/PointsTo/Pointer.h"
 #include "dg/ADT/Bitvector.h"
@@ -15,7 +15,7 @@ namespace pta {
     
 class PSNode;
     
-class DivisibleOffsetsPointsToSet {
+class AlignedOffsetsPointsToSet {
     
     static const unsigned int multiplier = 4; //offsets that are divisible by this value are stored in bitvector up to 62 * multiplier
     
@@ -56,8 +56,8 @@ class DivisibleOffsetsPointsToSet {
     }
     
 public:
-    DivisibleOffsetsPointsToSet() = default;
-    DivisibleOffsetsPointsToSet(std::initializer_list<Pointer> elems) { add(elems); }
+    AlignedOffsetsPointsToSet() = default;
+    AlignedOffsetsPointsToSet(std::initializer_list<Pointer> elems) { add(elems); }
     
     bool add(PSNode *target, Offset off) {
         if(has({target, Offset::UNKNOWN})) {
@@ -76,7 +76,7 @@ public:
         return add(ptr.target, ptr.offset);
     }
 
-    bool add(const DivisibleOffsetsPointsToSet& S) {
+    bool add(const AlignedOffsetsPointsToSet& S) {
         bool changed = pointers.set(S.pointers);
         for (const auto& ptr : S.oddPointers) {
             changed |= oddPointers.insert(ptr).second;
@@ -183,13 +183,17 @@ public:
         return pointers.size() + oddPointers.size();
     }
 
-    void swap(DivisibleOffsetsPointsToSet& rhs) {
+    void swap(AlignedOffsetsPointsToSet& rhs) {
         pointers.swap(rhs.pointers);
         oddPointers.swap(rhs.oddPointers);
     }
     
     size_t overflowSetSize() const {
         return oddPointers.size();
+    }
+    
+    static unsigned int getMultiplier() {
+        return multiplier;
     }
     
     //iterates over the bitvector first, then over the set
@@ -247,7 +251,7 @@ public:
             return !operator==(rhs);
         }
 
-        friend class DivisibleOffsetsPointsToSet;
+        friend class AlignedOffsetsPointsToSet;
     };
 
     const_iterator begin() const { return const_iterator(pointers, oddPointers); }
@@ -260,4 +264,4 @@ public:
 } // namespace analysis
 } // namespace dg
 
-#endif /* DIVISIBLEOFFSETSPOINTSTOSET_H */
+#endif /* ALIGNEDOFFSETSPOINTSTOSET_H */

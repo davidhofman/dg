@@ -6,7 +6,8 @@
 #include "dg/analysis/PointsTo/SeparateOffsetsPointsToSet.h"
 #include "dg/analysis/PointsTo/SingleBitvectorPointsToSet.h"
 #include "dg/analysis/PointsTo/SmallOffsetsPointsToSet.h"
-#include "dg/analysis/PointsTo/DivisibleOffsetsPointsToSet.h"
+#include "dg/analysis/PointsTo/AlignedOffsetsPointsToSet.h"
+#include "dg/analysis/PointsTo/AlignedBitvectorPointsToSet.h"
 
 namespace dg {
 namespace analysis {
