@@ -54,15 +54,15 @@ public:
         return offsets.set(S.offsets) || changed;
     }
 
-    bool remove(const Pointer& ptr) {
+    bool remove(__attribute__((unused)) const Pointer& ptr) {
         abort();
     }
     
-    bool remove(PSNode *target, Offset offset) {
+    bool remove(__attribute__((unused))PSNode *target, __attribute__((unused)) Offset offset) {
         abort();
     }
     
-    bool removeAny(PSNode *target) {
+    bool removeAny(__attribute__((unused)) PSNode *target) {
         abort();
     }
     
