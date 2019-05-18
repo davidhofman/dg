@@ -14,7 +14,8 @@ using dg::analysis::pta::SimplePointsToSet;
 using dg::analysis::pta::SeparateOffsetsPointsToSet;
 using dg::analysis::pta::SingleBitvectorPointsToSet;
 using dg::analysis::pta::SmallOffsetsPointsToSet;
-using dg::analysis::pta::DivisibleOffsetsPointsToSet;
+using dg::analysis::pta::AlignedOffsetsPointsToSet;
+using dg::analysis::pta::AlignedBitvectorPointsToSet;
 
 template<typename PTSetT>
 void queryingEmptySet() {
@@ -178,13 +179,91 @@ void pointsToTest() {
     REQUIRE(S.mustPointTo(Pointer(A, 0)) == false);
 }
 
+template<typename PTSetT>
+void testAlignedOverflowBehavior() { //only works for aligned PTSets using overflow Set
+    PTSetT S;
+    PointerSubgraph PS;
+    PSNode* A = PS.create(PSNodeType::ALLOC);
+    PSNode* B = PS.create(PSNodeType::ALLOC);
+    REQUIRE(S.getMultiplier() > 1);
+    REQUIRE(S.add(Pointer(A, 0)) == true);
+    REQUIRE(S.size() == 1);
+    REQUIRE(S.overflowSetSize() == 0);
+    REQUIRE(S.add(Pointer(A, S.getMultiplier())) == true);
+    REQUIRE(S.size() == 2);
+    REQUIRE(S.overflowSetSize() == 0);
+    REQUIRE(S.add(Pointer(A, 2 * S.getMultiplier() + 1)) == true);
+    REQUIRE(S.size() == 3);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.add(Pointer(A, 2 * S.getMultiplier())) == true);
+    REQUIRE(S.size() == 4);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.add(Pointer(A, 11 * S.getMultiplier() + 1)) == true);
+    REQUIRE(S.size() == 5);
+    REQUIRE(S.overflowSetSize() == 2);
+    REQUIRE(S.add(Pointer(B, dg::analysis::Offset::UNKNOWN)) == true);
+    REQUIRE(S.size() == 6);
+    REQUIRE(S.overflowSetSize() == 2);
+    REQUIRE(S.remove(Pointer(A, 11 * S.getMultiplier() + 1)) == true);
+    REQUIRE(S.size() == 5);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.remove(Pointer(A, 2 * S.getMultiplier())) == true);
+    REQUIRE(S.size() == 4);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.add(Pointer(A, dg::analysis::Offset::UNKNOWN)) == true);
+    REQUIRE(S.size() == 2);
+    REQUIRE(S.overflowSetSize() == 0);
+    REQUIRE(S.removeAny(B) == true);
+    REQUIRE(S.size() == 1);
+    REQUIRE(S.overflowSetSize() == 0);
+}
+
+template<typename PTSetT>
+void testSmallOverflowBehavior() { //only works for SmallOffsetsPTSet
+    PTSetT S;
+    PointerSubgraph PS;
+    PSNode* A = PS.create(PSNodeType::ALLOC);
+    PSNode* B = PS.create(PSNodeType::ALLOC);
+    REQUIRE(S.add(Pointer(A, 0)) == true);
+    REQUIRE(S.size() == 1);
+    REQUIRE(S.overflowSetSize() == 0);
+    REQUIRE(S.add(Pointer(A, 21)) == true);
+    REQUIRE(S.size() == 2);
+    REQUIRE(S.overflowSetSize() == 0);
+    REQUIRE(S.add(Pointer(A, 63)) == true);
+    REQUIRE(S.size() == 3);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.add(Pointer(A, 62)) == true);
+    REQUIRE(S.size() == 4);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.add(Pointer(A, 1287)) == true);
+    REQUIRE(S.size() == 5);
+    REQUIRE(S.overflowSetSize() == 2);
+    REQUIRE(S.add(Pointer(B, dg::analysis::Offset::UNKNOWN)) == true);
+    REQUIRE(S.size() == 6);
+    REQUIRE(S.overflowSetSize() == 2);
+    REQUIRE(S.remove(Pointer(A, 63)) == true);
+    REQUIRE(S.size() == 5);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.remove(Pointer(A, 62)) == true);
+    REQUIRE(S.size() == 4);
+    REQUIRE(S.overflowSetSize() == 1);
+    REQUIRE(S.add(Pointer(A, dg::analysis::Offset::UNKNOWN)) == true);
+    REQUIRE(S.size() == 2);
+    REQUIRE(S.overflowSetSize() == 0);
+    REQUIRE(S.removeAny(B) == true);
+    REQUIRE(S.size() == 1);
+    REQUIRE(S.overflowSetSize() == 0);
+}
+
 TEST_CASE("Querying empty set", "PointsToSet") {
     queryingEmptySet<PointsToSet>();
     queryingEmptySet<SimplePointsToSet>();
     queryingEmptySet<SeparateOffsetsPointsToSet>();
     queryingEmptySet<SingleBitvectorPointsToSet>();
     queryingEmptySet<SmallOffsetsPointsToSet>();
-    queryingEmptySet<DivisibleOffsetsPointsToSet>();
+    queryingEmptySet<AlignedOffsetsPointsToSet>();
+    queryingEmptySet<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Add an element", "PointsToSet") {
@@ -193,7 +272,8 @@ TEST_CASE("Add an element", "PointsToSet") {
     addAnElement<SeparateOffsetsPointsToSet>();
     addAnElement<SingleBitvectorPointsToSet>();
     addAnElement<SmallOffsetsPointsToSet>();
-    addAnElement<DivisibleOffsetsPointsToSet>();
+    addAnElement<AlignedOffsetsPointsToSet>();
+    addAnElement<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Add few elements", "PointsToSet") {
@@ -202,7 +282,8 @@ TEST_CASE("Add few elements", "PointsToSet") {
     addFewElements<SeparateOffsetsPointsToSet>();
     addFewElements<SingleBitvectorPointsToSet>();
     addFewElements<SmallOffsetsPointsToSet>();
-    addFewElements<DivisibleOffsetsPointsToSet>();
+    addFewElements<AlignedOffsetsPointsToSet>();
+    addFewElements<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Add few elements 2", "PointsToSet") {
@@ -211,7 +292,8 @@ TEST_CASE("Add few elements 2", "PointsToSet") {
     addFewElements2<SeparateOffsetsPointsToSet>();
     addFewElements2<SingleBitvectorPointsToSet>();
     addFewElements2<SmallOffsetsPointsToSet>();
-    addFewElements2<DivisibleOffsetsPointsToSet>();
+    addFewElements2<AlignedOffsetsPointsToSet>();
+    addFewElements2<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Merge points-to sets", "PointsToSet") {
@@ -220,7 +302,8 @@ TEST_CASE("Merge points-to sets", "PointsToSet") {
     mergePointsToSets<SeparateOffsetsPointsToSet>();
     mergePointsToSets<SingleBitvectorPointsToSet>();
     mergePointsToSets<SmallOffsetsPointsToSet>();
-    mergePointsToSets<DivisibleOffsetsPointsToSet>();
+    mergePointsToSets<AlignedOffsetsPointsToSet>();
+    mergePointsToSets<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Remove element", "PointsToSet") { //SeparateOffsetsPointsToSet has different remove behavior, it isn't tested here
@@ -228,7 +311,8 @@ TEST_CASE("Remove element", "PointsToSet") { //SeparateOffsetsPointsToSet has di
     removeElement<SimplePointsToSet>();
     removeElement<SingleBitvectorPointsToSet>();
     removeElement<SmallOffsetsPointsToSet>();
-    removeElement<DivisibleOffsetsPointsToSet>();
+    removeElement<AlignedOffsetsPointsToSet>();
+    removeElement<AlignedBitvectorPointsToSet>();   
 }
 
 TEST_CASE("Remove few elements", "PointsToSet") { //SeparateOffsetsPointsToSet has different remove behavior, it isn't tested here
@@ -236,7 +320,8 @@ TEST_CASE("Remove few elements", "PointsToSet") { //SeparateOffsetsPointsToSet h
     removeFewElements<SimplePointsToSet>();
     removeFewElements<SingleBitvectorPointsToSet>();
     removeFewElements<SmallOffsetsPointsToSet>();
-    removeFewElements<DivisibleOffsetsPointsToSet>();
+    removeFewElements<AlignedOffsetsPointsToSet>();
+    removeFewElements<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Remove all elements pointing to a target", "PointsToSet") { //SeparateOffsetsPointsToSet has different behavior, it isn't tested here
@@ -244,7 +329,8 @@ TEST_CASE("Remove all elements pointing to a target", "PointsToSet") { //Separat
     removeAnyTest<SimplePointsToSet>();
     removeAnyTest<SingleBitvectorPointsToSet>();
     removeAnyTest<SmallOffsetsPointsToSet>();
-    removeAnyTest<DivisibleOffsetsPointsToSet>();
+    removeAnyTest<AlignedOffsetsPointsToSet>();
+    removeAnyTest<AlignedBitvectorPointsToSet>();
 }
 
 TEST_CASE("Test various points-to functions", "PointsToSet") {
@@ -253,7 +339,15 @@ TEST_CASE("Test various points-to functions", "PointsToSet") {
     pointsToTest<SeparateOffsetsPointsToSet>();
     pointsToTest<SingleBitvectorPointsToSet>();
     pointsToTest<SmallOffsetsPointsToSet>();
-    pointsToTest<DivisibleOffsetsPointsToSet>();
+    pointsToTest<AlignedOffsetsPointsToSet>();
+    pointsToTest<AlignedBitvectorPointsToSet>();
 }
 
+TEST_CASE("Test small overflow set behavior", "PointsToSet") {
+    testSmallOverflowBehavior<SmallOffsetsPointsToSet>();
+}
 
+TEST_CASE("Test aligned overflow set behavior", "PointsToSet") {
+    testAlignedOverflowBehavior<AlignedOffsetsPointsToSet>();
+    testAlignedOverflowBehavior<AlignedBitvectorPointsToSet>();
+}
