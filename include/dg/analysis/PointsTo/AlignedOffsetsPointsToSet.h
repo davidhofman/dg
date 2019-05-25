@@ -1,5 +1,5 @@
 #ifndef ALIGNEDOFFSETSPOINTSTOSET_H
-#define ALIGNEDFFSETSPOINTSTOSET_H
+#define ALIGNEDOFFSETSPOINTSTOSET_H
 
 #include "dg/analysis/PointsTo/Pointer.h"
 #include "dg/ADT/Bitvector.h"
