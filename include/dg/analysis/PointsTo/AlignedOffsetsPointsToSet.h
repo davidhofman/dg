@@ -191,6 +191,10 @@ public:
     size_t overflowSetSize() const {
         return oddPointers.size();
     }
+
+    size_t containerSize() const {
+        return pointers.size();
+    }
     
     static unsigned int getMultiplier() {
         return multiplier;

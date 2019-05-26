@@ -66,14 +66,17 @@ public:
     }
     
     bool removeAny(PSNode *target) {
-        bool changed = false;
-        for(const auto& ptrID : pointers) {
+        std::vector<size_t> toRemove;
+        for (const auto& ptrID : pointers) {
             if(idVector[ptrID - 1].target == target) {
-                changed = true;
-                pointers.unset(ptrID);
+                toRemove.push_back(ptrID);
             }
         }
-        return changed;
+
+        for (auto ptrID : toRemove)  {
+            pointers.unset(ptrID);
+        }
+        return !toRemove.empty();
     }
     
     void clear() { 
@@ -142,6 +145,10 @@ public:
     
     size_t overflowSetSize() const {
         return 0;
+    }
+
+    size_t containerSize() const {
+        return pointers.size();
     }
     
     class const_iterator {

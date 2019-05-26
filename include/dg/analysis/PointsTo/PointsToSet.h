@@ -13,7 +13,7 @@ namespace dg {
 namespace analysis {
 namespace pta {
 
-using PointsToSetT = PointsToSet;
+using PointsToSetT = SingleBitvectorPointsToSet;
 using PointsToMapT = std::map<Offset, PointsToSetT>;
 
 } // namespace pta

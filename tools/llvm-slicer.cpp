@@ -420,16 +420,14 @@ static bool usesTheVariable(LLVMDependenceGraph& dg,
         if (ptr.isUnknown())
             return true; // it may be a definition of the variable, we do not know
 
-        auto alloca = ptr.target->getUserData<llvm::Value>();
-        if (!alloca)
+        auto value = ptr.target->getUserData<llvm::Value>();
+        if (!value)
             continue;
 
-        if (const llvm::AllocaInst *AI = llvm::dyn_cast<llvm::AllocaInst>(alloca)) {
-            auto name = valuesToVariables.find(AI);
-            if (name != valuesToVariables.end()) {
-                if (name->second == var)
-                    return true;
-            }
+        auto name = valuesToVariables.find(value);
+        if (name != valuesToVariables.end()) {
+            if (name->second == var)
+                return true;
         }
     }
 
@@ -470,8 +468,14 @@ static bool instMatchesCrit(LLVMDependenceGraph& dg,
 {
     for (const auto& c : parsedCrit) {
         auto& Loc = I.getDebugLoc();
-        if (!Loc)
+#if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
+        if (Loc.getLine() <= 0) {
+#else
+        if (!Loc) {
+#endif
             continue;
+        }
+
         if (static_cast<int>(Loc.getLine()) != c.first)
             continue;
 
@@ -539,6 +543,10 @@ static void getLineCriteriaNodes(LLVMDependenceGraph& dg,
 
     assert(!parsedCrit.empty() && "Failed parsing criteria");
 
+#if (LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7)
+    llvm::errs() << "WARNING: Variables names matching is not supported for LLVM older than 3.7\n";
+    llvm::errs() << "WARNING: The slicing criteria with variables names will not work\n";
+#else
     // create the mapping from LLVM values to C variable names
     for (auto& it : getConstructedFunctions()) {
         for (auto& I : llvm::instructions(*llvm::cast<llvm::Function>(it.first))) {
@@ -555,16 +563,20 @@ static void getLineCriteriaNodes(LLVMDependenceGraph& dg,
 
     if (valuesToVariables.empty()) {
         llvm::errs() << "No debugging information found in program,\n"
-                     << "slicing criteria with lines and variables will not work.\n"
+                     << "slicing criteria with lines and variables will work\n"
+                     << "only for global variables.\n"
                      << "You can still use the criteria based on call sites ;)\n";
-        return;
+    }
+
+    for (const auto& GV : dg.getModule()->globals()) {
+        valuesToVariables[&GV] = GV.getName().str();
     }
 
     // map line criteria to nodes
     for (auto& it : getConstructedFunctions()) {
         for (auto& I : llvm::instructions(*llvm::cast<llvm::Function>(it.first))) {
             if (instMatchesCrit(dg, I, parsedCrit)) {
-                LLVMNode *nd = dg.getNode(&I);
+                LLVMNode *nd = it.second->getNode(&I);
                 assert(nd);
                 nodes.insert(nd);
             }
@@ -578,6 +590,7 @@ static void getLineCriteriaNodes(LLVMDependenceGraph& dg,
             nodes.insert(nd);
         }
     }
+#endif // LLVM > 3.6
 }
 
 static std::set<LLVMNode *> getSlicingCriteriaNodes(LLVMDependenceGraph& dg,
@@ -685,6 +698,12 @@ bool findSecondarySlicingCriteria(std::set<LLVMNode *>& criteria_nodes,
     ADT::QueueLIFO<LLVMBBlock *> queue;
     auto tmp = criteria_nodes;
     for (auto&c : tmp) {
+        // the criteria may be a global variable and in that
+        // case it has no basic block (but also no predecessors,
+        // so we can skip it)
+        if (!c->getBBlock())
+            continue;
+
         queue.push(c->getBBlock());
         visited.insert(c->getBBlock());
 
